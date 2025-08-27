@@ -245,47 +245,62 @@ def build_html(data: dict, summary_html: str) -> str:
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>UCVM Research Weekly Summary</title>
-  <style>
-    body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }}
-    header, footer {{ color: #444; }}
-    table {{ width: 100%; border-collapse: collapse; margin-top: 1.5rem; }}
-    th, td {{ border: 1px solid #ddd; padding: 0.5rem; vertical-align: top; }}
-    th {{ background: #f7f7f7; text-align: left; }}
-    .meta {{ font-size: 0.9rem; color: #666; }}
-    details summary {{ cursor: pointer; }}
-    .btn {{
-      display: inline-block;
-      padding: 0.35rem 0.6rem;
-      border-radius: 0.45rem;
-      border: 1px solid #ccc;
-      text-decoration: none;
-      font-size: 0.9rem;
-      background: #fafafa;
-    }}
-    .btn:hover {{ background: #f0f0f0; }}
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-      <div>
+  <div class="page">
+    <header class="header">
+      <div class="header__brand">
         <h1>UCVM Research Weekly Summary</h1>
-        <p class="meta">Generated: {generated_time} | Window: {window_start} → {window_end} | Works: {len(works)}</p>
+        <p class="meta">Generated: … | Window: … | Works: …</p>
       </div>
-      <img src="logo.png" alt="Logo" style="height:96px;width:auto;">
-   </header>
+      <img class="header__logo" src="logo.png" alt="Logo">
+    </header>
 
-  {summary_html}
+    <section class="section">
+      <h2>Automated weekly summary</h2>
+      <div class="summary-block">
+        <!-- your pre-wrapped AI summary string -->
+      </div>
+    </section>
 
-  <h2>All works in window</h2>
-  <table>
-    <thead><tr><th>Title</th><th>Journal</th><th>Date</th><th>Cohort Authors</th><th>Abstract</th><th>Congratulate</th></tr></thead>
-    <tbody>
-      {table_html}
-    </tbody>
-  </table>
+    <section class="section">
+      <h2>All works in window</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th><th>Journal</th><th>Date</th>
+              <th>Cohort Authors</th><th>Abstract</th><th>Congratulate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- for each <td>, add data-label="Column Name" -->
+            <!-- example row: -->
+            <tr>
+              <td data-label="Title">…</td>
+              <td data-label="Journal">…</td>
+              <td data-label="Date">…</td>
+              <td data-label="Cohort Authors">…</td>
+              <td data-label="Abstract">
+                <details><summary>view</summary><div>…</div></details>
+              </td>
+              <td data-label="Congratulate">
+                <a class="btn" href="mailto:…">Email Dayna</a>
+                <!-- etc. -->
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-  <footer><p class="meta">Built by GitHub Actions • Data from OpenAlex</p></footer>
+    <footer class="footer">
+      Built by GitHub Actions • Data from OpenAlex
+    </footer>
+  </div>
 </body>
+
 </html>"""
     return template
 
