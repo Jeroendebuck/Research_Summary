@@ -164,36 +164,45 @@ def _mailto_link(email: str, subject: str, body: str) -> str:
     return f"mailto:{email_safe}{query}"
 
 def build_html(data: dict, summary_html: str) -> str:
+    window = data.get("window", {}) or {}
+    start = (window.get("start") or "").strip()
+    end = (window.get("end") or "").strip()
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     rows = []
     for w in data.get("works", []):
         cohort_matches = (w.get("cohort_matches") or [])
-        openalex_link = w.get("openalex_id") or ""
-        doi_url = w.get("doi_url") or ""
+        openalex_link = (w.get("openalex_id") or "").strip()
+        doi_url = (w.get("doi_url") or "").strip()
         link = doi_url or openalex_link or ""
+
         title = (w.get("title") or "").strip()
         journal = (w.get("journal") or "").strip()
         date = (w.get("publication_date") or "").strip()
-
-        # FULL abstract for HTML (no prompt cap)
         abstract_full = (w.get("abstract_text") or "").strip()
+
+        # Escape text for HTML
+        title_html = html.escape(title) or "—"
+        journal_html = html.escape(journal) or "—"
+        date_html = html.escape(date) or "—"
         abstract_html = html.escape(abstract_full or "—")
+        openalex_attr = html.escape(openalex_link)
+        link_attr = html.escape(link)
 
-        # Cohort authors (names)
-        cohort_names = ", ".join([a.get("display_name", "") for a in cohort_matches if a.get("display_name")])
-        cohort_names = cohort_names or "—"
+        # Cohort author names (displayed even if no email)
+        cohort_names = ", ".join([a.get("display_name", "") for a in cohort_matches if a.get("display_name")]) or "—"
+        cohort_names_html = html.escape(cohort_names)
 
-        # Build congratulate buttons (one per matched author with an email)
+        # Build congratulate buttons (only for authors with email)
         buttons = []
         for a in cohort_matches:
             email = (a.get("email") or "").strip()
             if not email:
                 continue
-            person = a.get("display_name") or "colleague"
-            # Subject line per request: only journal (no title)
+            person = (a.get("display_name") or "colleague").strip()
+            first = person.split()[0] if person else "author"
+
             subj = f"Congrats on your recent paper in {journal}" if journal else "Congratulations on your new paper"
-            # Body sentence with title/journal/date if present
             phrase = "Congrats on your new paper"
             if title:
                 phrase += f' "{title}"'
@@ -209,36 +218,37 @@ def build_html(data: dict, summary_html: str) -> str:
                 phrase,
                 f"Link: {link}" if link else "",
                 "",
-                "—"
+                "—",
             ]
             body = "\n".join([ln for ln in body_lines if ln is not None])
             mailto = _mailto_link(email, subj, body)
-            safe_label = html.escape(f"Email {person.split()[0] if person else 'author'}")
-            buttons.append(f'<a class="btn" href="{mailto}">{safe_label}</a>')
+            buttons.append(f'<a class="btn" href="{mailto}">Email {html.escape(first)}</a>')
 
         buttons_html = " ".join(buttons) if buttons else "—"
 
-        # Escape text for table cells
-        title_html = html.escape(title)
-        journal_html = html.escape(journal)
-        date_html = html.escape(date)
-        cohort_names_html = html.escape(cohort_names)
-        link_attr = html.escape(link)
-        openalex_attr = html.escape(openalex_link)
+        # Title cell with link to OpenAlex (and DOI/link if available)
+        title_cell = f'<a href="{openalex_attr}">{title_html}</a>'
+        if link:
+            title_cell += f' <small>· <a href="{link_attr}">doi/link</a></small>'
 
         rows.append(f"""
         <tr>
-          <td><a href="{openalex_attr}">{title_html}</a>{f' <small>· <a href="{link_attr}">doi/link</a></small>' if link else ''}</td>
-          <td>{journal_html}</td>
-          <td>{date_html}</td>
-          <td>{cohort_names_html}</td>
-          <td><details><summary>view</summary><div style="white-space:pre-wrap">{abstract_html}</div></details></td>
-          <td>{buttons_html}</td>
+          <td data-label="Title">{title_cell}</td>
+          <td data-label="Journal">{journal_html}</td>
+          <td data-label="Date">{date_html}</td>
+          <td data-label="Cohort Authors">{cohort_names_html}</td>
+          <td data-label="Abstract"><details><summary>view</summary><div style="white-space:pre-wrap">{abstract_html}</div></details></td>
+          <td data-label="Congratulate">{buttons_html}</td>
         </tr>
         """)
 
-    table_html = "\n".join(rows[:3000])  # safety cap
+    table_html = (
+        '\n'.join(rows[:3000])
+        if rows else '<tr><td colspan="6">No works found in this window.</td></tr>'
+    )
 
+    # Build the page with REAL meta, REAL summary_html, and REAL table_html
+    n_works = len(rows)
     template = f"""<!doctype html>
 <html lang="en">
 <head>
@@ -252,17 +262,12 @@ def build_html(data: dict, summary_html: str) -> str:
     <header class="header">
       <div class="header__brand">
         <h1>UCVM Research Weekly Summary</h1>
-        <p class="meta">Generated: … | Window: … | Works: …</p>
+        <p class="meta">Generated: {html.escape(now)} | Window: {html.escape(start)} → {html.escape(end)} | Works: {n_works}</p>
       </div>
       <img class="header__logo" src="logo.png" alt="Logo">
     </header>
 
-    <section class="section">
-      <h2>Automated weekly summary</h2>
-      <div class="summary-block">
-        <!-- your pre-wrapped AI summary string -->
-      </div>
-    </section>
+    {summary_html}
 
     <section class="section">
       <h2>All works in window</h2>
@@ -275,21 +280,7 @@ def build_html(data: dict, summary_html: str) -> str:
             </tr>
           </thead>
           <tbody>
-            <!-- for each <td>, add data-label="Column Name" -->
-            <!-- example row: -->
-            <tr>
-              <td data-label="Title">…</td>
-              <td data-label="Journal">…</td>
-              <td data-label="Date">…</td>
-              <td data-label="Cohort Authors">…</td>
-              <td data-label="Abstract">
-                <details><summary>view</summary><div>…</div></details>
-              </td>
-              <td data-label="Congratulate">
-                <a class="btn" href="mailto:…">Email Dayna</a>
-                <!-- etc. -->
-              </td>
-            </tr>
+            {table_html}
           </tbody>
         </table>
       </div>
@@ -300,8 +291,8 @@ def build_html(data: dict, summary_html: str) -> str:
     </footer>
   </div>
 </body>
-
-</html>"""
+</html>
+"""
     return template
 
 def main():
