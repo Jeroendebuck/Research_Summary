@@ -1,7 +1,7 @@
 Name,Email,Level,RG1,RG2,RG3,RG4,Category,Appointment,OpenAlexID
 Alyssa Butters,alyssa.butters@ucalgary.ca,Assistant,OHRG,CHRG,,,Teaching,FT,A5097476685
 Betty-Jo Bradley,bettyjo.bradley@ucalgary.ca,Assistant,CHRG,,,,Teaching,FT,
-Cindy Adams,cadams@ucalgary.ca,Professor,,,,,Research,FT,A5089186675
+Cindy Adams,cadams@ucalgary.ca,Professor,,,,,Research,FT,a5089186675
 Darlene Donszelmann,djdonsze@ucalgary.ca,Associate,,,,,Research,FT,A5054682662
 Diego Borin Nobrega,diego.nobrega@ucalgary.ca,Assistant,OHRG,CHRG,,,Research,FT,A5015254879
 Eduardo Cobo,ecobo@ucalgary.ca,Associate,IBRG,CHRG,,,Research,FT,A5046882263
@@ -89,4 +89,5 @@ Mia Alfajaro,mia.alfajaro@ucalgary.ca,Assistant,IBRG ,,,,Research,FT,A5060461427
 Laureen Hall,laureen.hall@ucalgary.ca,Assistant,VERG,,,,Teaching,FT,A5022803956
 Serge Chalhoub,serge.chalhoub@ucalgary.ca,Professor,,,,,Teaching,FT,A5022803956
 Jennifer Pearson,jennifer.pearson@ucalgary.ca,Assistant,CHRG,,,,Research,Former,A5086163497
+
 
