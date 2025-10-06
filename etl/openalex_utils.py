@@ -42,11 +42,23 @@ def _author_uri(aid: str) -> str:
     return f"https://openalex.org/{aid}"
 
 def _polite_params() -> dict:
+    """
+    Build OpenAlex 'polite pool' params.
+    Prefer API key; fall back to mailto. Supports either OPENALEX_MAILTO or OPENALEX_EMAIL.
+    """
     polite = {}
-    email = os.environ.get("OPENALEX_EMAIL")
-    if email:
-        polite["mailto"] = email  # OpenAlex 'polite pool'
+
+    api_key = os.getenv("OPENALEX_API_KEY")
+    if api_key:
+        polite["api_key"] = api_key
+
+    # Accept either name; MAILTO takes precedence if both are set
+    mailto = os.getenv("OPENALEX_MAILTO") or os.getenv("OPENALEX_EMAIL")
+    if mailto:
+        polite["mailto"] = mailto
+
     return polite
+
 
 class OpenAlexError(Exception):
     pass
@@ -82,7 +94,6 @@ def _parse_retry_after(value: str) -> int:
         return max(1, seconds)
     except Exception:
         return 1
-
 
 def _get(url: str, params: dict) -> dict:
     """GET with retries and basic error handling, including 403 backoffs."""
