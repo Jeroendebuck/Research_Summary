@@ -63,9 +63,7 @@ def _polite_params() -> dict:
 class OpenAlexError(Exception):
     pass
 
-@retry(wait=wait_exponential(multiplier=1, min=1, max=10),
-       stop=stop_after_attempt(5),
-       retry=retry_if_exception_type((requests.RequestException, OpenAlexError)))
+
 def _parse_retry_after(value: str) -> int:
     """
     Parse HTTP Retry-After header; return seconds to wait (>=1).
@@ -89,12 +87,14 @@ def _parse_retry_after(value: str) -> int:
         dt = parsedate_to_datetime(v)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         seconds = int((dt - now).total_seconds())
         return max(1, seconds)
     except Exception:
         return 1
-
+@retry(wait=wait_exponential(multiplier=1, min=1, max=10),
+       stop=stop_after_attempt(5),
+       retry=retry_if_exception_type((requests.RequestException, OpenAlexError)))
 def _get(url: str, params: dict) -> dict:
     """GET with retries and basic error handling, including 403 backoffs."""
     merged = dict(params or {})
@@ -102,8 +102,9 @@ def _get(url: str, params: dict) -> dict:
     resp = requests.get(url, params=merged, timeout=30)
     # Handle throttling explicitly
     if resp.status_code == 429:
+        retry_after = _parse_retry_after(resp.headers.get("Retry-After", "1"))
         retry_after = min(max(retry_after, 1), 300)  # 1..300 s
-        import time as _t; _t.sleep(max(retry_after, 1))
+        import time as _t; _t.sleep(retry_after)
         raise OpenAlexError("Rate limited (429)")
     # Surface 400/403 bodies to logs to aid debugging
     if resp.status_code in (400, 403):
