@@ -5,6 +5,8 @@ import json
 import typing as T
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+
 
 import requests
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
@@ -52,6 +54,36 @@ class OpenAlexError(Exception):
 @retry(wait=wait_exponential(multiplier=1, min=1, max=10),
        stop=stop_after_attempt(5),
        retry=retry_if_exception_type((requests.RequestException, OpenAlexError)))
+def _parse_retry_after(value: str) -> int:
+    """
+    Parse HTTP Retry-After header; return seconds to wait (>=1).
+    Accepts either:
+      - delta-seconds: "120"
+      - HTTP-date: "Mon, 06 Oct 2025 01:18:51 GMT"
+    """
+    if not value:
+        return 1
+    v = value.strip()
+
+    # Case 1: simple integer seconds
+    if v.isdigit():
+        try:
+            return max(1, int(v))
+        except Exception:
+            return 1
+
+    # Case 2: HTTP-date
+    try:
+        dt = parsedate_to_datetime(v)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        seconds = int((dt - now).total_seconds())
+        return max(1, seconds)
+    except Exception:
+        return 1
+
+
 def _get(url: str, params: dict) -> dict:
     """GET with retries and basic error handling, including 403 backoffs."""
     merged = dict(params or {})
@@ -59,7 +91,7 @@ def _get(url: str, params: dict) -> dict:
     resp = requests.get(url, params=merged, timeout=30)
     # Handle throttling explicitly
     if resp.status_code == 429:
-        retry_after = int(resp.headers.get("Retry-After", "1"))
+        retry_after = min(max(retry_after, 1), 300)  # 1..300 s
         import time as _t; _t.sleep(max(retry_after, 1))
         raise OpenAlexError("Rate limited (429)")
     # Surface 400/403 bodies to logs to aid debugging
